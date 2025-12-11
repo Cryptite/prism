@@ -25,11 +25,13 @@ import com.google.inject.Singleton;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.prism_mc.prism.api.activities.Activity;
 import org.prism_mc.prism.api.services.recording.RecordingService;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
 import org.prism_mc.prism.paper.PrismPaper;
+import org.prism_mc.prism.paper.actions.PaperItemStackAction;
 import org.prism_mc.prism.paper.api.activities.PaperActivity;
 import org.prism_mc.prism.paper.api.containers.PaperPlayerContainer;
 import org.prism_mc.prism.paper.services.filters.PaperFilterService;
@@ -174,5 +176,21 @@ public class PaperRecordingService implements RecordingService {
         this.clearTask();
 
         recordMode = RecordMode.STOPPED;
+    }
+
+    @Override
+    public org.prism_mc.prism.api.actions.Action createItemAction(org.prism_mc.prism.api.actions.types.ActionType actionType, Object itemStack) {
+        if (!(itemStack instanceof ItemStack bukkitItemStack)) {
+            throw new IllegalArgumentException("itemStack must be a Bukkit ItemStack");
+        }
+        return new PaperItemStackAction(actionType, bukkitItemStack);
+    }
+
+    @Override
+    public org.prism_mc.prism.api.actions.Action createItemAction(org.prism_mc.prism.api.actions.types.ActionType actionType, Object itemStack, int quantity) {
+        if (!(itemStack instanceof ItemStack bukkitItemStack)) {
+            throw new IllegalArgumentException("itemStack must be a Bukkit ItemStack");
+        }
+        return new PaperItemStackAction(actionType, bukkitItemStack, quantity, null);
     }
 }

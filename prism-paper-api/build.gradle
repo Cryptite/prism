@@ -1,8 +1,21 @@
 plugins {
     id 'prism.java-conventions'
+    id 'maven-publish'
 }
 
 dependencies {
     compileOnly project.property('deps.paper-api')
+    compileOnly project.property('deps.nbt-api')
     implementation project(':prism-api')
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.property("group")
+            artifactId = 'prism-paper-api'
+            version = project.property("version")
+            from components.java
+        }
+    }
 }

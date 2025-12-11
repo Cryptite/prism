@@ -29,26 +29,21 @@ import dev.triumphteam.cmd.core.argument.keyed.Flag;
 import dev.triumphteam.cmd.core.argument.keyed.FlagKey;
 import dev.triumphteam.cmd.core.extension.CommandOptions;
 import dev.triumphteam.cmd.core.suggestion.SuggestionKey;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.Getter;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Registry;
-import org.bukkit.Tag;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.prism_mc.prism.api.Prism;
 import org.prism_mc.prism.api.actions.types.ActionTypeRegistry;
+import org.prism_mc.prism.api.activities.Activity;
+import org.prism_mc.prism.api.activities.ActivityQuery;
 import org.prism_mc.prism.api.services.recording.RecordingService;
 import org.prism_mc.prism.api.storage.StorageAdapter;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
@@ -57,45 +52,11 @@ import org.prism_mc.prism.loader.services.dependencies.DependencyService;
 import org.prism_mc.prism.loader.services.dependencies.loader.PluginLoader;
 import org.prism_mc.prism.loader.services.scheduler.ThreadPoolScheduler;
 import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
-import org.prism_mc.prism.paper.commands.AboutCommand;
-import org.prism_mc.prism.paper.commands.CacheCommand;
-import org.prism_mc.prism.paper.commands.ConfigsCommand;
-import org.prism_mc.prism.paper.commands.DrainCommand;
-import org.prism_mc.prism.paper.commands.ExtinguishCommand;
-import org.prism_mc.prism.paper.commands.LookupCommand;
-import org.prism_mc.prism.paper.commands.NearCommand;
-import org.prism_mc.prism.paper.commands.PageCommand;
-import org.prism_mc.prism.paper.commands.PreviewCommand;
-import org.prism_mc.prism.paper.commands.PurgeCommand;
-import org.prism_mc.prism.paper.commands.ReportCommand;
-import org.prism_mc.prism.paper.commands.RestoreCommand;
-import org.prism_mc.prism.paper.commands.RollbackCommand;
-import org.prism_mc.prism.paper.commands.TeleportCommand;
-import org.prism_mc.prism.paper.commands.VaultCommand;
-import org.prism_mc.prism.paper.commands.WandCommand;
-import org.prism_mc.prism.paper.listeners.block.BlockBreakListener;
-import org.prism_mc.prism.paper.listeners.block.BlockBurnListener;
-import org.prism_mc.prism.paper.listeners.block.BlockDispenseListener;
-import org.prism_mc.prism.paper.listeners.block.BlockExplodeListener;
-import org.prism_mc.prism.paper.listeners.block.BlockFadeListener;
-import org.prism_mc.prism.paper.listeners.block.BlockFertilizeListener;
-import org.prism_mc.prism.paper.listeners.block.BlockFormListener;
-import org.prism_mc.prism.paper.listeners.block.BlockFromToListener;
-import org.prism_mc.prism.paper.listeners.block.BlockIgniteListener;
-import org.prism_mc.prism.paper.listeners.block.BlockPistonExtendListener;
-import org.prism_mc.prism.paper.listeners.block.BlockPistonRetractListener;
-import org.prism_mc.prism.paper.listeners.block.BlockPlaceListener;
-import org.prism_mc.prism.paper.listeners.block.BlockSpreadListener;
-import org.prism_mc.prism.paper.listeners.block.TntPrimeListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityBlockFormListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityChangeBlockListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityDamageByEntityListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityDeathListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityExplodeListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityPickupItemListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityPlaceListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityTransformListener;
-import org.prism_mc.prism.paper.listeners.entity.EntityUnleashListener;
+import org.prism_mc.prism.paper.api.PaperPrismApi;
+import org.prism_mc.prism.paper.api.PaperPrismApiImpl;
+import org.prism_mc.prism.paper.commands.*;
+import org.prism_mc.prism.paper.listeners.block.*;
+import org.prism_mc.prism.paper.listeners.entity.*;
 import org.prism_mc.prism.paper.listeners.hanging.HangingBreakByEntityListener;
 import org.prism_mc.prism.paper.listeners.hanging.HangingBreakListener;
 import org.prism_mc.prism.paper.listeners.hanging.HangingPlaceListener;
@@ -103,24 +64,7 @@ import org.prism_mc.prism.paper.listeners.inventory.InventoryClickListener;
 import org.prism_mc.prism.paper.listeners.inventory.InventoryDragListener;
 import org.prism_mc.prism.paper.listeners.inventory.InventoryMoveItemListener;
 import org.prism_mc.prism.paper.listeners.leaves.LeavesDecayListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerArmorStandManipulateListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerBedEnterListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerBucketEmptyListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerBucketEntityListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerBucketFillListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerCommandPreprocessListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerDropItemListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerExpChangeListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerHarvestBlockListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerInteractEntityListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerInteractListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerJoinListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerLeashEntityListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerQuitListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerShearEntityListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerTakeLecternBookListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerTeleportListener;
-import org.prism_mc.prism.paper.listeners.player.PlayerUnleashEntityListener;
+import org.prism_mc.prism.paper.listeners.player.*;
 import org.prism_mc.prism.paper.listeners.portal.PortalCreateListener;
 import org.prism_mc.prism.paper.listeners.projectile.ProjectileLaunchListener;
 import org.prism_mc.prism.paper.listeners.raid.RaidTriggerListener;
@@ -254,6 +198,15 @@ public class PrismPaper implements Prism {
             recordingService = injectorProvider.injector().getInstance(PaperRecordingService.class);
             purgeService = injectorProvider.injector().getInstance(PurgeService.class);
             injectorProvider.injector().getInstance(SchedulingService.class);
+
+            // Register the API with Bukkit's ServicesManager
+            PaperPrismApi apiImpl = injectorProvider.injector().getInstance(PaperPrismApiImpl.class);
+            loaderPlugin().getServer().getServicesManager().register(
+                PaperPrismApi.class,
+                apiImpl,
+                loaderPlugin(),
+                ServicePriority.Normal
+            );
 
             // Register event listeners
             registerEvent(BlockBreakListener.class);
@@ -506,6 +459,7 @@ public class PrismPaper implements Prism {
                 Argument.forString().name("at").build(),
                 Argument.forString().name("bounds").build(),
                 Argument.listOf(Integer.class).name("id").build(),
+                Argument.listOf(Integer.class).name("itemid").build(),
                 Argument.listOf(String.class).name("a").suggestion(SuggestionKey.of("actions")).build(),
                 Argument.listOf(String.class).name("btag").suggestion(SuggestionKey.of("blocktags")).build(),
                 Argument.listOf(String.class).name("etag").suggestion(SuggestionKey.of("entitytypetags")).build(),
@@ -611,5 +565,22 @@ public class PrismPaper implements Prism {
         if (storageAdapter != null) {
             storageAdapter.close();
         }
+    }
+
+    @Override
+    public RecordingService recordingService() {
+        return recordingService;
+    }
+
+    @Override
+    public CompletableFuture<List<Activity>> performLookup(ActivityQuery query) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return storageAdapter.queryActivities(query);
+            } catch (Exception e) {
+                bootstrap.loggingService().handleException(e);
+                return List.of();
+            }
+        });
     }
 }

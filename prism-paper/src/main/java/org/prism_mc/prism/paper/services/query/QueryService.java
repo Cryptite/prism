@@ -35,29 +35,7 @@ import org.prism_mc.prism.paper.api.activities.PaperActivityQuery;
 import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
 import org.prism_mc.prism.paper.services.messages.MessageService;
 import org.prism_mc.prism.paper.services.query.parsers.QueryArgumentParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.ActionParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.AtParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.BeforeParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockCauseParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockTagParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.BoundsParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.CauseParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.DescriptorParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeCauseParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeTagParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.IdParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.InParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.ItemParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.ItemTagParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerAffectedParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerCauseParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.RadiusQueryArgumentParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.ReversedParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.SinceParameterParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.WorldParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.*;
 
 public class QueryService {
 
@@ -110,6 +88,7 @@ public class QueryService {
         parsers.add(
             new InParameterParser(messageService, configurationService.prismConfig().defaults(), worldEditIntegration)
         );
+        parsers.add(new ItemIdParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new ItemParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new ItemTagParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new DescriptorParameterParser(messageService, configurationService.prismConfig().defaults()));

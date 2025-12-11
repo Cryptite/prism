@@ -21,6 +21,8 @@
 package org.prism_mc.prism.api.services.recording;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import org.prism_mc.prism.api.actions.Action;
+import org.prism_mc.prism.api.actions.types.ActionType;
 import org.prism_mc.prism.api.activities.Activity;
 
 public interface RecordingService {
@@ -55,4 +57,23 @@ public interface RecordingService {
      * Stop the recording service.
      */
     void stop();
+
+    /**
+     * Create an item action from the given action type and item stack.
+     *
+     * @param actionType The action type
+     * @param itemStack The item stack (platform-specific, e.g., Bukkit ItemStack)
+     * @return The action
+     */
+    Action createItemAction(ActionType actionType, Object itemStack);
+
+    /**
+     * Create an item action from the given action type, item stack, and quantity.
+     *
+     * @param actionType The action type
+     * @param itemStack The item stack (platform-specific)
+     * @param quantity The quantity
+     * @return The action
+     */
+    Action createItemAction(ActionType actionType, Object itemStack, int quantity);
 }
