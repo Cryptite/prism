@@ -24,10 +24,8 @@ import de.tr7zw.nbtapi.NBT;
 import de.tr7zw.nbtapi.iface.ReadWriteNBT;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.translation.Argument;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -42,8 +40,6 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
-import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.jetbrains.annotations.Nullable;
 import org.prism_mc.prism.api.actions.ItemAction;
 import org.prism_mc.prism.api.actions.types.ActionResultType;
@@ -139,26 +135,10 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
                 .append(Component.space());
         }
 
-        Component itemName = itemStack.displayName().color(ITEM_COLOR);
-        if (itemId > 0) {
-            itemName = itemName.clickEvent(ClickEvent.suggestCommand("/pr l itemid:" + itemId));
-        }
+        // Use the effective name, but strip colors for consistent chat UI
+        complete.append(Component.text(PlainTextComponentSerializer.plainText().serialize(itemStack.effectiveName())));
 
-        complete.append(itemName);
-
-        if (meta instanceof PotionMeta potionMeta) {
-            if (
-                potionMeta.getBasePotionType() != null && !potionMeta.getBasePotionType().getPotionEffects().isEmpty()
-            ) {
-                var effect = potionMeta.getBasePotionType().getPotionEffects().getFirst();
-
-                complete
-                    .append(Component.space())
-                    .append(Component.text("("))
-                    .append(Component.translatable(effect.getType().translationKey()))
-                    .append(Component.text(")"));
-            }
-        } else if (
+        if (
             itemStack.getType().equals(Material.ENCHANTED_BOOK) &&
             meta instanceof EnchantmentStorageMeta enchantmentStorageMeta
         ) {
@@ -173,18 +153,14 @@ public class PaperItemStackAction extends PaperMaterialAction implements ItemAct
         } else if (meta instanceof BookMeta bookMeta && (bookMeta.hasTitle() || bookMeta.hasAuthor())) {
             complete.append(Component.space()).append(Component.text("("));
 
-            if (bookMeta.hasTitle()) {
-                complete.append(Component.text(bookMeta.getTitle()));
-            }
-
             if (bookMeta.hasAuthor()) {
-                complete.append(Component.text(" by ")).append(Component.text(bookMeta.getAuthor()));
+                complete.append(Component.text("by ")).append(Component.text(bookMeta.getAuthor()));
             }
 
             complete.append(Component.text(")"));
         }
 
-        return complete.build();
+        return complete.hoverEvent(itemStack).build();
     }
 
     @Override
