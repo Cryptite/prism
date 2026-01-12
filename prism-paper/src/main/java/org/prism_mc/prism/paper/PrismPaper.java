@@ -54,9 +54,46 @@ import org.prism_mc.prism.loader.services.scheduler.ThreadPoolScheduler;
 import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
 import org.prism_mc.prism.paper.api.PaperPrismApi;
 import org.prism_mc.prism.paper.api.PaperPrismApiImpl;
-import org.prism_mc.prism.paper.commands.*;
-import org.prism_mc.prism.paper.listeners.block.*;
-import org.prism_mc.prism.paper.listeners.entity.*;
+import org.prism_mc.prism.paper.commands.AboutCommand;
+import org.prism_mc.prism.paper.commands.CacheCommand;
+import org.prism_mc.prism.paper.commands.ConfigsCommand;
+import org.prism_mc.prism.paper.commands.DrainCommand;
+import org.prism_mc.prism.paper.commands.ExtinguishCommand;
+import org.prism_mc.prism.paper.commands.LookupCommand;
+import org.prism_mc.prism.paper.commands.NearCommand;
+import org.prism_mc.prism.paper.commands.PageCommand;
+import org.prism_mc.prism.paper.commands.PreviewCommand;
+import org.prism_mc.prism.paper.commands.PurgeCommand;
+import org.prism_mc.prism.paper.commands.ReportCommand;
+import org.prism_mc.prism.paper.commands.RestoreCommand;
+import org.prism_mc.prism.paper.commands.RollbackCommand;
+import org.prism_mc.prism.paper.commands.TeleportCommand;
+import org.prism_mc.prism.paper.commands.VaultCommand;
+import org.prism_mc.prism.paper.commands.WandCommand;
+import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
+import org.prism_mc.prism.paper.listeners.block.BlockBreakListener;
+import org.prism_mc.prism.paper.listeners.block.BlockBurnListener;
+import org.prism_mc.prism.paper.listeners.block.BlockDispenseListener;
+import org.prism_mc.prism.paper.listeners.block.BlockExplodeListener;
+import org.prism_mc.prism.paper.listeners.block.BlockFadeListener;
+import org.prism_mc.prism.paper.listeners.block.BlockFertilizeListener;
+import org.prism_mc.prism.paper.listeners.block.BlockFormListener;
+import org.prism_mc.prism.paper.listeners.block.BlockFromToListener;
+import org.prism_mc.prism.paper.listeners.block.BlockIgniteListener;
+import org.prism_mc.prism.paper.listeners.block.BlockPistonExtendListener;
+import org.prism_mc.prism.paper.listeners.block.BlockPistonRetractListener;
+import org.prism_mc.prism.paper.listeners.block.BlockPlaceListener;
+import org.prism_mc.prism.paper.listeners.block.BlockSpreadListener;
+import org.prism_mc.prism.paper.listeners.block.TntPrimeListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityBlockFormListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityChangeBlockListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityDamageByEntityListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityDeathListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityExplodeListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityPickupItemListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityPlaceListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityTransformListener;
+import org.prism_mc.prism.paper.listeners.entity.EntityUnleashListener;
 import org.prism_mc.prism.paper.listeners.hanging.HangingBreakByEntityListener;
 import org.prism_mc.prism.paper.listeners.hanging.HangingBreakListener;
 import org.prism_mc.prism.paper.listeners.hanging.HangingPlaceListener;
@@ -198,6 +235,11 @@ public class PrismPaper implements Prism {
             recordingService = injectorProvider.injector().getInstance(PaperRecordingService.class);
             purgeService = injectorProvider.injector().getInstance(PurgeService.class);
             injectorProvider.injector().getInstance(SchedulingService.class);
+
+            // Initialize WorldEdit integration if available (for block logging)
+            if (Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
+                injectorProvider.injector().getInstance(WorldEditIntegration.class);
+            }
 
             // Register the API with Bukkit's ServicesManager
             PaperPrismApi apiImpl = injectorProvider.injector().getInstance(PaperPrismApiImpl.class);

@@ -163,14 +163,21 @@ public class PrismModule extends AbstractModule {
     /**
      * Get the world edit integration.
      *
+     * @param recordingService The recording service
+     * @param configurationService The configuration service
      * @return The world edit integration
      */
     @Provides
     @Singleton
-    public WorldEditIntegration getWorldEditIntegeration() {
-        final Plugin worldEdit = Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
+    @Inject
+    public WorldEditIntegration getWorldEditIntegeration(
+        PaperRecordingService recordingService,
+        ConfigurationService configurationService
+    ) {
+        // Check for WorldEdit
+        Plugin worldEdit = Bukkit.getServer().getPluginManager().getPlugin("WorldEdit");
         if (worldEdit != null) {
-            return new WorldEditIntegration(loggingService, worldEdit);
+            return new WorldEditIntegration(loggingService, worldEdit, recordingService, configurationService);
         }
 
         return null;

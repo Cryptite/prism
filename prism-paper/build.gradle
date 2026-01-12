@@ -6,6 +6,8 @@ plugins {
 repositories {
     // WorldEdit
     maven { url = 'https://maven.enginehub.org/repo/' }
+    // FastAsyncWorldEdit
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
 }
 
 dependencies {
