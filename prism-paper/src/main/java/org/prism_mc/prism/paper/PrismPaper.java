@@ -101,7 +101,25 @@ import org.prism_mc.prism.paper.listeners.inventory.InventoryClickListener;
 import org.prism_mc.prism.paper.listeners.inventory.InventoryDragListener;
 import org.prism_mc.prism.paper.listeners.inventory.InventoryMoveItemListener;
 import org.prism_mc.prism.paper.listeners.leaves.LeavesDecayListener;
-import org.prism_mc.prism.paper.listeners.player.*;
+import org.prism_mc.prism.paper.listeners.player.AsyncPlayerChatListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerArmorStandManipulateListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerBedEnterListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerBucketEmptyListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerBucketEntityListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerBucketFillListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerCommandPreprocessListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerDropItemListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerExpChangeListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerHarvestBlockListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerInteractEntityListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerInteractListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerJoinListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerLeashEntityListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerQuitListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerShearEntityListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerTakeLecternBookListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerTeleportListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerUnleashEntityListener;
 import org.prism_mc.prism.paper.listeners.portal.PortalCreateListener;
 import org.prism_mc.prism.paper.listeners.projectile.ProjectileLaunchListener;
 import org.prism_mc.prism.paper.listeners.raid.RaidTriggerListener;
@@ -251,6 +269,7 @@ public class PrismPaper implements Prism {
             );
 
             // Register event listeners
+            registerEvent(AsyncPlayerChatListener.class);
             registerEvent(BlockBreakListener.class);
             registerEvent(BlockBurnListener.class);
             registerEvent(BlockDispenseListener.class);
