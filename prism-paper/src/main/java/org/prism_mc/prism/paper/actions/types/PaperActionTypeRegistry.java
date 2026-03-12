@@ -150,24 +150,25 @@ public class PaperActionTypeRegistry extends AbstractActionTypeRegistry {
     public static final ActionType XP_PICKUP = new GenericActionType("xp-pickup", ActionResultType.NONE, false);
 
     //Loka Actions
-    public static final ActionType ORE_EXCHANGE_ITEM = new ItemActionType("ore-exchange-item", ActionResultType.CREATES, false);
-    public static final ActionType VENDOR_STOCK_ADDED = new ItemActionType("vendor-stock-add", ActionResultType.CREATES, false);
-    public static final ActionType VENDOR_STOCK_REMOVED = new ItemActionType("vendor-stock-remove", ActionResultType.CREATES, false);
-    public static final ActionType VENDOR_ITEM_SELL = new ItemActionType("vendor-item-sell", ActionResultType.CREATES, false);
-    public static final ActionType VENDOR_ITEM_BUY = new ItemActionType("vendor-item-buy", ActionResultType.CREATES, false);
-    public static final ActionType VS_INSERTED = new ItemActionType("void-storage-insert", ActionResultType.CREATES, false);
-    public static final ActionType VS_REMOVED = new ItemActionType("void-storage-remove", ActionResultType.CREATES, false);
+    public static final ActionType ORE_EXCHANGE_ITEM = new ItemActionType("item-ore-exchange", ActionResultType.CREATES, false);
+    public static final ActionType FISH_VENDOR_SELL = new ItemActionType("fish-vendor-sell", ActionResultType.CREATES, false);
+    public static final ActionType VENDOR_STOCK_ADDED = new ItemActionType("item-vendor-add", ActionResultType.CREATES, false);
+    public static final ActionType VENDOR_STOCK_REMOVED = new ItemActionType("item-vendor-remove", ActionResultType.CREATES, false);
+    public static final ActionType VENDOR_ITEM_SELL = new ItemActionType("item-vendor-sell", ActionResultType.CREATES, false);
+    public static final ActionType VENDOR_ITEM_BUY = new ItemActionType("item-vendor-buy", ActionResultType.CREATES, false);
+    public static final ActionType VS_INSERTED = new ItemActionType("item-vs-insert", ActionResultType.CREATES, false);
+    public static final ActionType VS_REMOVED = new ItemActionType("item-vs-remove", ActionResultType.CREATES, false);
     public static final ActionType DOOR_LOCKED = new BlockActionType("loka-lock-door", ActionResultType.NONE, false);
     public static final ActionType DOOR_UNLOCKED = new BlockActionType("loka-unlock-door", ActionResultType.NONE, false);
     public static final ActionType SHARDS_DEPOSITED = new ItemActionType("shard-pouch-insert", ActionResultType.CREATES, false);
     public static final ActionType SHARDS_WITHDRAWN = new ItemActionType("shard-pouch-remove", ActionResultType.CREATES, false);
-    public static final ActionType ESCROW_CLAIMED_ITEM = new ItemActionType("escrow-claim-item", ActionResultType.CREATES, false);
-    public static final ActionType ESCROW_CLAIMED_ITEM_TO_VS = new ItemActionType("escrow-claim-itemtovs", ActionResultType.CREATES, false);
-    public static final ActionType TRADE_PLAYER_ITEM = new ItemActionType("trade-player-item", ActionResultType.CREATES, false);
-    public static final ActionType MARKET_ITEM_SOLD = new ItemActionType("market-item-sold", ActionResultType.CREATES, false);
-    public static final ActionType MARKET_ITEM_PURCHASED = new ItemActionType("market-item-purchased", ActionResultType.CREATES, false);
+    public static final ActionType ESCROW_CLAIMED_ITEM = new ItemActionType("item-escrow-claim", ActionResultType.CREATES, false);
+    public static final ActionType ESCROW_CLAIMED_ITEM_TO_VS = new ItemActionType("item-escrow-claimvs", ActionResultType.CREATES, false);
+    public static final ActionType TRADE_PLAYER_ITEM = new ItemActionType("item-trade-player", ActionResultType.CREATES, false);
+    public static final ActionType MARKET_ITEM_SOLD = new ItemActionType("item-market-sold", ActionResultType.CREATES, false);
+    public static final ActionType MARKET_ITEM_PURCHASED = new ItemActionType("item-market-purchased", ActionResultType.CREATES, false);
     public static final ActionType MARKET_BUYORDER_COMPLETED = new ItemActionType("market-buyorder-completed", ActionResultType.CREATES, false);
-    public static final ActionType VENDOR_ITEM_PURCHASE = new ItemActionType("vendor-item-purchase", ActionResultType.CREATES, false);
+    public static final ActionType VENDOR_ITEM_PURCHASE = new ItemActionType("item-vendor-purchase", ActionResultType.CREATES, false);
     public static final ActionType BET_SHARDS = new ItemActionType("bet-shard-amount", ActionResultType.CREATES, false);
     public static final ActionType RAFFLE_PURCHASE = new ItemActionType("raffle-purchase-amount", ActionResultType.CREATES, false);
 
