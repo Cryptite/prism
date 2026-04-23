@@ -36,6 +36,7 @@ import net.kyori.moonshine.strategy.supertype.StandardSupertypeThenInterfaceSupe
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.Plugin;
+import org.prism_mc.prism.api.actions.ActionFactory;
 import org.prism_mc.prism.api.actions.types.ActionTypeRegistry;
 import org.prism_mc.prism.api.activities.AbstractActivity;
 import org.prism_mc.prism.api.services.modifications.ModificationQueueResult;
@@ -66,12 +67,13 @@ import org.prism_mc.prism.core.storage.adapters.sql.SqlActivityQueryBuilder;
 import org.prism_mc.prism.core.storage.adapters.sql.SqlSchemaUpdater;
 import org.prism_mc.prism.core.storage.adapters.sqlite.SqliteStorageAdapter;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
+import org.prism_mc.prism.loader.services.configuration.storage.StorageConfiguration;
 import org.prism_mc.prism.loader.services.logging.LoggingService;
 import org.prism_mc.prism.loader.storage.StorageType;
 import org.prism_mc.prism.paper.PrismPaper;
 import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
+import org.prism_mc.prism.paper.commands.StatusLabel;
 import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
-import org.prism_mc.prism.paper.providers.TaskChainProvider;
 import org.prism_mc.prism.paper.services.alerts.BlockBreakAlertData;
 import org.prism_mc.prism.paper.services.alerts.ItemAlertData;
 import org.prism_mc.prism.paper.services.alerts.PaperAlertService;
@@ -91,8 +93,10 @@ import org.prism_mc.prism.paper.services.messages.resolvers.ModificationQueueRes
 import org.prism_mc.prism.paper.services.messages.resolvers.ModificationResultPlaceholderResolver;
 import org.prism_mc.prism.paper.services.messages.resolvers.PaginationResultPlaceholderResolver;
 import org.prism_mc.prism.paper.services.messages.resolvers.PurgeCycleResultPlaceholderResolver;
+import org.prism_mc.prism.paper.services.messages.resolvers.StatusLabelPlaceholderResolver;
 import org.prism_mc.prism.paper.services.messages.resolvers.StringPlaceholderResolver;
 import org.prism_mc.prism.paper.services.messages.resolvers.WandModePlaceholderResolver;
+import org.prism_mc.prism.paper.services.modifications.AutoRollbackService;
 import org.prism_mc.prism.paper.services.modifications.PaperModificationQueueService;
 import org.prism_mc.prism.paper.services.modifications.PaperRestore;
 import org.prism_mc.prism.paper.services.modifications.PaperRollback;
@@ -102,6 +106,7 @@ import org.prism_mc.prism.paper.services.purge.PaperPurgeQueue;
 import org.prism_mc.prism.paper.services.purge.PurgeService;
 import org.prism_mc.prism.paper.services.query.QueryService;
 import org.prism_mc.prism.paper.services.recording.PaperRecordingService;
+import org.prism_mc.prism.paper.services.recording.wal.WalService;
 import org.prism_mc.prism.paper.services.scheduling.SchedulingService;
 import org.prism_mc.prism.paper.services.translation.PaperTranslationService;
 import org.prism_mc.prism.paper.services.wands.InspectionWand;
@@ -221,6 +226,7 @@ public class PrismModule extends AbstractModule {
                 .weightedPlaceholderResolver(String.class, new StringPlaceholderResolver(), 0)
                 .weightedPlaceholderResolver(PurgeCycleResult.class, new PurgeCycleResultPlaceholderResolver(), 0)
                 .weightedPlaceholderResolver(AbstractActivity.class, activityPlaceholderResolver, 0)
+                .weightedPlaceholderResolver(StatusLabel.class, new StatusLabelPlaceholderResolver(), 0)
                 .weightedPlaceholderResolver(WandMode.class, wandModePlaceholderResolver, 0)
                 .weightedPlaceholderResolver(
                     ModificationQueueResult.class,
@@ -244,10 +250,11 @@ public class PrismModule extends AbstractModule {
         // Base
         bind(Path.class).toInstance(dataPath);
 
-        // Taskchain
-        bind(TaskChainProvider.class).toInstance(new TaskChainProvider(prism.loader()));
-
         // Actions
+        bind(org.prism_mc.prism.paper.api.actions.PrismPaperActionFactory.class)
+            .to(org.prism_mc.prism.paper.actions.factory.PaperActionFactory.class)
+            .in(Singleton.class);
+        bind(ActionFactory.class).to(org.prism_mc.prism.paper.api.actions.PrismPaperActionFactory.class);
         bind(ActionTypeRegistry.class).to(PaperActionTypeRegistry.class).in(Singleton.class);
 
         // Service - Alerts
@@ -258,6 +265,7 @@ public class PrismModule extends AbstractModule {
 
         // Service - Configuration
         bind(ConfigurationService.class).toInstance(prism.loader().configurationService());
+        bind(StorageConfiguration.class).toInstance(prism.loader().configurationService().storageConfig());
 
         // Service - Expectations
         bind(ExpectationService.class).in(Singleton.class);
@@ -277,6 +285,7 @@ public class PrismModule extends AbstractModule {
         bind(ActivityPlaceholderResolver.class).in(Singleton.class);
 
         // Service - Modifications
+        bind(AutoRollbackService.class).in(Singleton.class);
         bind(ModificationQueueService.class).to(PaperModificationQueueService.class).in(Singleton.class);
 
         // Service - Nbt
@@ -301,6 +310,9 @@ public class PrismModule extends AbstractModule {
 
         // Service - Recording
         bind(RecordingService.class).to(PaperRecordingService.class).in(Singleton.class);
+
+        // Service - WAL
+        bind(WalService.class).in(Singleton.class);
 
         // Service - Scheduling
         bind(SchedulingService.class).in(Singleton.class);

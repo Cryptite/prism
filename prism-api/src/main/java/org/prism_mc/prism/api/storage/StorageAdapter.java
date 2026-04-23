@@ -68,6 +68,15 @@ public interface StorageAdapter {
     void markReversed(List<Long> activityIds, boolean reversed);
 
     /**
+     * Count activities matching the query.
+     *
+     * @param query The activity query
+     * @return The count of matching activities
+     * @throws Exception Storage layer exception
+     */
+    int countActivities(ActivityQuery query) throws Exception;
+
+    /**
      * Query activities in a non-paginated format (needed for world modification).
      *
      * @param query The activity query
@@ -84,6 +93,13 @@ public interface StorageAdapter {
      * @throws Exception Storage layer exception
      */
     PartialListPaginationResult<AbstractActivity> queryActivitiesPaginated(ActivityQuery query) throws Exception;
+
+    /**
+     * Get the connection pool status.
+     *
+     * @return The connection status
+     */
+    StorageConnectionStatus connectionStatus();
 
     /**
      * Check whether this storage system is enabled and ready.

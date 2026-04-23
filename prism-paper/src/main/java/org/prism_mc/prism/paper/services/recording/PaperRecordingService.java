@@ -22,12 +22,11 @@ package org.prism_mc.prism.paper.services.recording;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.time.Duration;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitTask;
 import org.prism_mc.prism.api.activities.Activity;
 import org.prism_mc.prism.api.services.recording.RecordingService;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
@@ -37,6 +36,7 @@ import org.prism_mc.prism.paper.actions.PaperItemStackAction;
 import org.prism_mc.prism.paper.api.activities.PaperActivity;
 import org.prism_mc.prism.paper.api.containers.PaperPlayerContainer;
 import org.prism_mc.prism.paper.services.filters.PaperFilterService;
+import org.prism_mc.prism.paper.services.recording.wal.WalService;
 
 @Singleton
 public class PaperRecordingService implements RecordingService {
@@ -62,6 +62,11 @@ public class PaperRecordingService implements RecordingService {
     private final RecordingTask recordingTask;
 
     /**
+     * The WAL service.
+     */
+    private final WalService walService;
+
+    /**
      * Set the recording mode.
      */
     private RecordMode recordMode = RecordMode.NORMAL;
@@ -72,14 +77,24 @@ public class PaperRecordingService implements RecordingService {
     private final LinkedBlockingQueue<Activity> queue;
 
     /**
+     * The activity aggregator.
+     */
+    private final ActivityAggregator aggregator;
+
+    /**
      * Count of activities dropped due to a full queue since the last drain.
      */
     private final AtomicInteger droppedActivities = new AtomicInteger();
 
     /**
-     * Cache the scheduled task.
+     * Number of currently active recording workers.
      */
-    private BukkitTask task;
+    private final AtomicInteger activeWorkers = new AtomicInteger();
+
+    /**
+     * Maximum number of parallel recording workers.
+     */
+    private final int parallelism;
 
     /**
      * The drain mode.
@@ -97,18 +112,23 @@ public class PaperRecordingService implements RecordingService {
      * @param filterService The filter service
      * @param loggingService The logging service
      * @param recordingTask The recording task
+     * @param walService The WAL service
      */
     @Inject
     public PaperRecordingService(
         ConfigurationService configurationService,
         PaperFilterService filterService,
         LoggingService loggingService,
-        RecordingTask recordingTask
+        RecordingTask recordingTask,
+        WalService walService
     ) {
         this.configurationService = configurationService;
         this.filterService = filterService;
         this.loggingService = loggingService;
         this.recordingTask = recordingTask;
+        this.walService = walService;
+        this.parallelism = configurationService.prismConfig().recording().parallelism();
+        this.aggregator = new ActivityAggregator(configurationService.prismConfig().recording().aggregationInterval());
 
         int capacity = configurationService.prismConfig().recording().queueMaxCapacity();
         this.queue = capacity > 0 ? new LinkedBlockingQueue<>(capacity) : new LinkedBlockingQueue<>();
@@ -136,6 +156,28 @@ public class PaperRecordingService implements RecordingService {
             return false;
         }
 
+        if (
+            configurationService.prismConfig().recording().aggregateActivities() &&
+            activity.action().type().aggregatable()
+        ) {
+            aggregator.aggregate(activity);
+            return true;
+        }
+
+        if (!offerToQueue(activity)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Offer an activity to the queue and write it to the WAL if enabled.
+     *
+     * @param activity The activity
+     * @return True if the activity was accepted
+     */
+    private boolean offerToQueue(Activity activity) {
         if (!queue.offer(activity)) {
             if (droppedActivities.getAndIncrement() == 0) {
                 loggingService.warn(
@@ -147,31 +189,56 @@ public class PaperRecordingService implements RecordingService {
             return false;
         }
 
+        walService.append(activity);
         return true;
     }
 
     @Override
     public void clearTask() {
-        if (task != null) {
-            task.cancel();
-            task = null;
-        }
+        activeWorkers.decrementAndGet();
+    }
 
-        int dropped = droppedActivities.getAndSet(0);
-        if (dropped > 0) {
-            loggingService.warn("Dropped {0} activities due to a full recording queue.", dropped);
-        }
+    @Override
+    public int resetDroppedCount() {
+        return droppedActivities.getAndSet(0);
+    }
+
+    @Override
+    public void flushAggregator() {
+        aggregator.flush(activity -> offerToQueue(activity));
     }
 
     /**
-     * Drains the queue sync.
+     * Drains the queue synchronously with a timeout.
+     *
+     * <p>Attempts to flush all pending activities to the database before
+     * shutdown. Stops early if the timeout is exceeded or a batch fails,
+     * to avoid blocking server shutdown indefinitely.</p>
+     *
+     * @param timeout Maximum time to spend draining
      */
-    public void drainSync() {
+    public void drainSync(Duration timeout) {
         recordMode = RecordMode.DRAIN_SYNC;
+        long deadline = System.nanoTime() + timeout.toNanos();
 
-        RecordingTask recordingTask = this.recordingTask.toNew();
+        aggregator.flushAll(activity -> offerToQueue(activity));
+
+        loggingService.info("Draining {0} queued activities (timeout: {1}s)...", queue.size(), timeout.toSeconds());
+
+        RecordingTask drainTask = this.recordingTask.toNew();
         while (!queue.isEmpty()) {
-            recordingTask.save();
+            if (System.nanoTime() > deadline) {
+                loggingService.warn("Drain timeout reached, {0} activities remain", queue.size());
+                break;
+            }
+
+            try {
+                drainTask.saveOrThrow();
+            } catch (Exception e) {
+                loggingService.handleException(e);
+                loggingService.warn("Drain aborted due to error, {0} activities remain", queue.size());
+                break;
+            }
         }
     }
 
@@ -183,30 +250,42 @@ public class PaperRecordingService implements RecordingService {
     @Override
     public void queueNextRecording(Runnable recordingTask) {
         long delay = configurationService.prismConfig().recording().delay();
-        queueNextRecording(delay);
+        scheduleWorkers(delay);
     }
 
     /**
-     * Queue the next recording with a specific delay.
+     * Schedule recording workers up to the configured parallelism.
      *
-     * @param delay The delay
+     * @param delay The delay in ticks before starting each worker
      */
-    public void queueNextRecording(long delay) {
-        if (task != null) {
-            throw new IllegalStateException("Recording tasks must be cleared before scheduling a new one.");
+    private void scheduleWorkers(long delay) {
+        if (!recordMode.equals(RecordMode.NORMAL)) {
+            return;
         }
 
-        if (recordMode.equals(RecordMode.NORMAL)) {
-            task = Bukkit.getServer()
-                .getScheduler()
-                .runTaskLaterAsynchronously(PrismPaper.instance().loaderPlugin(), recordingTask, delay);
+        while (true) {
+            int current = activeWorkers.get();
+            if (current >= parallelism) {
+                break;
+            }
+
+            if (!activeWorkers.compareAndSet(current, current + 1)) {
+                continue;
+            }
+
+            Runnable task = this.recordingTask.toNew();
+            Bukkit.getAsyncScheduler()
+                .runDelayed(
+                    PrismPaper.instance().loaderPlugin(),
+                    t -> task.run(),
+                    delay * 50,
+                    java.util.concurrent.TimeUnit.MILLISECONDS
+                );
         }
     }
 
     @Override
     public void stop() {
-        this.clearTask();
-
         recordMode = RecordMode.STOPPED;
     }
 

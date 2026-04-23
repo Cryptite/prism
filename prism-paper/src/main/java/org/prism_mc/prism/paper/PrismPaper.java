@@ -29,8 +29,11 @@ import dev.triumphteam.cmd.core.argument.keyed.Flag;
 import dev.triumphteam.cmd.core.argument.keyed.FlagKey;
 import dev.triumphteam.cmd.core.extension.CommandOptions;
 import dev.triumphteam.cmd.core.suggestion.SuggestionKey;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.bukkit.*;
@@ -40,7 +43,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.prism_mc.prism.api.Prism;
 import org.prism_mc.prism.api.actions.types.ActionTypeRegistry;
 import org.prism_mc.prism.api.activities.Activity;
 import org.prism_mc.prism.api.activities.ActivityQuery;
@@ -52,8 +54,8 @@ import org.prism_mc.prism.loader.services.dependencies.DependencyService;
 import org.prism_mc.prism.loader.services.dependencies.loader.PluginLoader;
 import org.prism_mc.prism.loader.services.scheduler.ThreadPoolScheduler;
 import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
-import org.prism_mc.prism.paper.api.PaperPrismApi;
-import org.prism_mc.prism.paper.api.PaperPrismApiImpl;
+import org.prism_mc.prism.paper.api.PrismPaperApi;
+import org.prism_mc.prism.paper.api.actions.PrismPaperActionFactory;
 import org.prism_mc.prism.paper.commands.AboutCommand;
 import org.prism_mc.prism.paper.commands.CacheCommand;
 import org.prism_mc.prism.paper.commands.ConfigsCommand;
@@ -67,7 +69,9 @@ import org.prism_mc.prism.paper.commands.PurgeCommand;
 import org.prism_mc.prism.paper.commands.ReportCommand;
 import org.prism_mc.prism.paper.commands.RestoreCommand;
 import org.prism_mc.prism.paper.commands.RollbackCommand;
+import org.prism_mc.prism.paper.commands.StatusCommand;
 import org.prism_mc.prism.paper.commands.TeleportCommand;
+import org.prism_mc.prism.paper.commands.UndoCommand;
 import org.prism_mc.prism.paper.commands.VaultCommand;
 import org.prism_mc.prism.paper.commands.WandCommand;
 import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
@@ -114,6 +118,7 @@ import org.prism_mc.prism.paper.listeners.player.PlayerHarvestBlockListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerInteractEntityListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerInteractListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerJoinListener;
+import org.prism_mc.prism.paper.listeners.player.PlayerKickListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerLeashEntityListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerQuitListener;
 import org.prism_mc.prism.paper.listeners.player.PlayerShearEntityListener;
@@ -134,10 +139,11 @@ import org.prism_mc.prism.paper.providers.InjectorProvider;
 import org.prism_mc.prism.paper.services.messages.MessageService;
 import org.prism_mc.prism.paper.services.purge.PurgeService;
 import org.prism_mc.prism.paper.services.recording.PaperRecordingService;
+import org.prism_mc.prism.paper.services.recording.wal.WalService;
 import org.prism_mc.prism.paper.services.scheduling.SchedulingService;
 import org.prism_mc.prism.paper.utils.VersionUtils;
 
-public class PrismPaper implements Prism {
+public class PrismPaper implements PrismPaperApi {
 
     /**
      *  Get this instance.
@@ -162,8 +168,14 @@ public class PrismPaper implements Prism {
     private PurgeService purgeService;
 
     /**
+     * The WAL service.
+     */
+    private WalService walService;
+
+    /**
      * The recording service.
      */
+    @Getter
     private RecordingService recordingService;
 
     /**
@@ -177,6 +189,12 @@ public class PrismPaper implements Prism {
      */
     @Getter
     private StorageAdapter storageAdapter;
+
+    /**
+     * The action factory.
+     */
+    @Getter
+    private PrismPaperActionFactory actionFactory;
 
     /**
      * The action type registry.
@@ -204,7 +222,7 @@ public class PrismPaper implements Prism {
      * @return The platform dependencies
      */
     protected Set<Dependency> platformDependencies() {
-        return EnumSet.of(Dependency.TASKCHAIN_BUKKIT, Dependency.TASKCHAIN_CORE);
+        return Set.of();
     }
 
     /**
@@ -242,6 +260,12 @@ public class PrismPaper implements Prism {
             return;
         }
 
+        // Initialize WAL service and replay any uncommitted entries
+        walService = injectorProvider.injector().getInstance(WalService.class);
+        walService.replayUncommitted(storageAdapter);
+        walService.initialize();
+
+        actionFactory = injectorProvider.injector().getInstance(PrismPaperActionFactory.class);
         actionTypeRegistry = injectorProvider.injector().getInstance(ActionTypeRegistry.class);
 
         String pluginName = this.loaderPlugin().getDescription().getName();
@@ -253,6 +277,9 @@ public class PrismPaper implements Prism {
             recordingService = injectorProvider.injector().getInstance(PaperRecordingService.class);
             purgeService = injectorProvider.injector().getInstance(PurgeService.class);
             injectorProvider.injector().getInstance(SchedulingService.class);
+
+            // Register the API as a Bukkit service for third-party plugins
+            Bukkit.getServicesManager().register(PrismPaperApi.class, this, loaderPlugin(), ServicePriority.Normal);
 
             // Initialize WorldEdit integration if available (for block logging)
             if (Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
@@ -311,6 +338,7 @@ public class PrismPaper implements Prism {
             registerEvent(PlayerInteractListener.class);
             registerEvent(PlayerInteractEntityListener.class);
             registerEvent(PlayerJoinListener.class);
+            registerEvent(PlayerKickListener.class);
             registerEvent(PlayerLeashEntityListener.class);
             registerEvent(PlayerQuitListener.class);
             registerEvent(PlayerShearEntityListener.class);
@@ -505,11 +533,15 @@ public class PrismPaper implements Prism {
                 Flag.flag("ow").longFlag("overwrite").build(),
                 Flag.flag("nd").longFlag("nodefaults").build(),
                 Flag.flag("ng").longFlag("nogroup").build(),
-                Flag.flag("rd").longFlag("removedrops").argument(Boolean.class).build()
+                Flag.flag("rd").longFlag("removedrops").argument(Boolean.class).build(),
+                Flag.flag("c").longFlag("count").build(),
+                Flag.flag("s").longFlag("sort").argument(String.class).build()
             );
 
             commandManager.registerNamedArguments(
                 ArgumentKey.of("query-parameters"),
+                Argument.forInt().name("above").build(),
+                Argument.forInt().name("below").build(),
                 Argument.forBoolean().name("reversed").build(),
                 Argument.forInt().name("r").build(),
                 Argument.forString().name("in").suggestion(SuggestionKey.of("ins")).build(),
@@ -556,7 +588,9 @@ public class PrismPaper implements Prism {
             commandManager.registerCommand(injectorProvider.injector().getInstance(ReportCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(RestoreCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(RollbackCommand.class));
+            commandManager.registerCommand(injectorProvider.injector().getInstance(StatusCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(TeleportCommand.class));
+            commandManager.registerCommand(injectorProvider.injector().getInstance(UndoCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(WandCommand.class));
         }
     }
@@ -612,17 +646,62 @@ public class PrismPaper implements Prism {
      * On disable.
      */
     public void onDisable() {
-        if (recordingService != null) {
+        Bukkit.getServicesManager().unregisterAll(loaderPlugin());
+
+        if (recordingService instanceof PaperRecordingService paperRecordingService) {
             if (!recordingService.queue().isEmpty()) {
-                loader()
-                    .loggingService()
-                    .warn(
-                        "Server is shutting down yet there are {0} activities in the queue",
-                        recordingService.queue().size()
-                    );
+                int drainTimeout = bootstrap
+                    .loader()
+                    .configurationService()
+                    .prismConfig()
+                    .recording()
+                    .drainTimeoutSeconds();
+
+                boolean walEnabled = walService != null && walService.isEnabled();
+
+                if (drainTimeout > 0) {
+                    paperRecordingService.drainSync(Duration.ofSeconds(drainTimeout));
+
+                    int remaining = recordingService.queue().size();
+                    if (remaining == 0) {
+                        loader().loggingService().info("Queue fully drained.");
+                    } else if (walEnabled) {
+                        walService.writeRemainingQueue(recordingService.queue());
+                        loader()
+                            .loggingService()
+                            .info(
+                                "Queue drain finished with {0} activities remaining. " +
+                                "Saved to WAL, will be replayed on next start.",
+                                remaining
+                            );
+                    } else {
+                        loader()
+                            .loggingService()
+                            .warn("Queue drain finished with {0} activities remaining.", remaining);
+                    }
+                } else if (walEnabled) {
+                    walService.writeRemainingQueue(recordingService.queue());
+                    loader()
+                        .loggingService()
+                        .info(
+                            "Drain disabled. {0} queued activities saved to disk, " + "will be replayed on next start.",
+                            recordingService.queue().size()
+                        );
+                } else {
+                    loader()
+                        .loggingService()
+                        .warn(
+                            "Server is shutting down with {0} activities still queued",
+                            recordingService.queue().size()
+                        );
+                }
             }
 
             recordingService.stop();
+        }
+
+        if (walService != null) {
+            walService.shutdown();
         }
 
         if (purgeService != null && !purgeService.queueFree()) {

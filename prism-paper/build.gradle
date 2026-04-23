@@ -1,6 +1,6 @@
 plugins {
     id 'prism.java-conventions'
-    id 'com.gradleup.shadow' version '9.0.0-beta11'
+    id 'com.gradleup.shadow' version '9.4.1'
 }
 
 repositories {
@@ -27,7 +27,6 @@ dependencies {
     compileOnly project.property('deps.p6spy')
     compileOnly project.property('deps.paper-api')
     compileOnly project.property('deps.quartz')
-    compileOnly project.property('deps.taskchain')
     compileOnly project.property('deps.triumph-gui')
     compileOnly project.property('deps.world-edit-core')
     compileOnly project.property('deps.world-edit-bukkit')
@@ -47,7 +46,6 @@ compileJava {
 shadowJar {
     archiveFileName = 'prism-paper.jarinjar'
 
-    relocate 'co.aikar.taskchain', 'org.prism_mc.prism.libs.taskchain'
     relocate 'com.cronutils', 'org.prism_mc.prism.libs.cronutils'
     relocate 'com.fasterxml.jackson', 'org.prism_mc.prism.libs.jackson'
     relocate 'com.github.benmanes.caffeine', 'org.prism_mc.prism.libs.caffeine'
@@ -68,6 +66,4 @@ shadowJar {
     relocate 'org.spongepowered.configurate', 'org.prism_mc.prism.libs.configurate'
 }
 
-artifacts {
-    archives shadowJar
-}
+assemble.dependsOn shadowJar

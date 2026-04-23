@@ -21,11 +21,15 @@
 package org.prism_mc.prism.paper.services.recording;
 
 import com.google.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import org.prism_mc.prism.api.activities.Activity;
 import org.prism_mc.prism.api.services.recording.RecordingService;
 import org.prism_mc.prism.api.storage.ActivityBatch;
 import org.prism_mc.prism.api.storage.StorageAdapter;
 import org.prism_mc.prism.loader.services.configuration.storage.StorageConfiguration;
 import org.prism_mc.prism.loader.services.logging.LoggingService;
+import org.prism_mc.prism.paper.services.recording.wal.WalService;
 
 public class RecordingTask implements Runnable {
 
@@ -50,24 +54,32 @@ public class RecordingTask implements Runnable {
     private final LoggingService loggingService;
 
     /**
+     * The WAL service.
+     */
+    private final WalService walService;
+
+    /**
      * Construct a new recording task.
      *
      * @param storageConfig The storage config
      * @param storageAdapter The storage adapter
      * @param recordingService The recording service
      * @param loggingService The logging service
+     * @param walService The WAL service
      */
     @Inject
     public RecordingTask(
         StorageConfiguration storageConfig,
         StorageAdapter storageAdapter,
         RecordingService recordingService,
-        LoggingService loggingService
+        LoggingService loggingService,
+        WalService walService
     ) {
         this.storageConfig = storageConfig;
         this.storageAdapter = storageAdapter;
         this.recordingService = recordingService;
         this.loggingService = loggingService;
+        this.walService = walService;
     }
 
     @Override
@@ -76,7 +88,7 @@ public class RecordingTask implements Runnable {
 
         // Schedule the next recording
         recordingService.queueNextRecording(
-            new RecordingTask(storageConfig, storageAdapter, recordingService, loggingService)
+            new RecordingTask(storageConfig, storageAdapter, recordingService, loggingService, walService)
         );
     }
 
@@ -84,36 +96,57 @@ public class RecordingTask implements Runnable {
      * Saves anything in the queue, or as many as we can.
      */
     public void save() {
-        if (!recordingService.queue().isEmpty()) {
-            try {
-                int batchCount = 0;
-                int batchMax = storageConfig.primaryDataSource().batchMax();
+        recordingService.flushAggregator();
 
-                ActivityBatch batch = storageAdapter.createActivityBatch();
-                batch.startBatch();
+        // Reset the drop counter so we only track drops during this cycle
+        recordingService.resetDroppedCount();
 
-                while (!recordingService.queue().isEmpty()) {
-                    batchCount++;
-                    batch.add(recordingService.queue().poll());
+        try {
+            saveOrThrow();
+        } catch (Exception e) {
+            loggingService.handleException(e);
+        }
 
-                    // Batch max exceeded, break
-                    if (batchCount > batchMax) {
-                        loggingService.debug(
-                            "Recorder: Batch max exceeded, running insert. Queue remaining: {0}",
-                            recordingService.queue().size()
-                        );
-
-                        break;
-                    }
-                }
-
-                batch.commitBatch();
-            } catch (Exception e) {
-                loggingService.handleException(e);
-            }
+        int dropped = recordingService.resetDroppedCount();
+        if (dropped > 0) {
+            loggingService.warn("Dropped {0} activities due to a full recording queue.", dropped);
         }
 
         recordingService.clearTask();
+    }
+
+    /**
+     * Saves anything in the queue, or as many as we can.
+     *
+     * @throws Exception If the batch commit fails
+     */
+    public void saveOrThrow() throws Exception {
+        if (!recordingService.queue().isEmpty()) {
+            int batchMax = storageConfig.primaryDataSource().batchMax();
+
+            List<Activity> drained = new ArrayList<>(batchMax);
+            recordingService.queue().drainTo(drained, batchMax);
+
+            if (!drained.isEmpty()) {
+                long walBatchId = walService.startBatch(drained.size());
+
+                try {
+                    ActivityBatch batch = storageAdapter.createActivityBatch();
+                    batch.startBatch();
+
+                    for (Activity activity : drained) {
+                        batch.add(activity);
+                    }
+
+                    batch.commitBatch();
+                } catch (Exception e) {
+                    walService.writeFailedBatch(drained);
+                    throw e;
+                }
+
+                walService.commitBatch(walBatchId);
+            }
+        }
     }
 
     /**
@@ -122,6 +155,6 @@ public class RecordingTask implements Runnable {
      * @return The recording task
      */
     public RecordingTask toNew() {
-        return new RecordingTask(storageConfig, storageAdapter, recordingService, loggingService);
+        return new RecordingTask(storageConfig, storageAdapter, recordingService, loggingService, walService);
     }
 }

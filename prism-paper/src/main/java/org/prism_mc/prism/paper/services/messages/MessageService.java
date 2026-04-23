@@ -30,6 +30,7 @@ import org.prism_mc.prism.api.services.modifications.ModificationResult;
 import org.prism_mc.prism.api.services.pagination.PaginationResult;
 import org.prism_mc.prism.api.services.purges.PurgeCycleResult;
 import org.prism_mc.prism.api.services.wands.WandMode;
+import org.prism_mc.prism.paper.commands.StatusLabel;
 import org.prism_mc.prism.paper.services.alerts.BlockBreakAlertData;
 import org.prism_mc.prism.paper.services.alerts.ItemAlertData;
 
@@ -114,8 +115,14 @@ public interface MessageService {
     @Message("prism.error.param-invalid")
     void errorParamInvalid(CommandSender receiver, @Placeholder String param);
 
+    @Message("prism.error.param-invalid-action")
+    void errorParamInvalidAction(CommandSender receiver, @Placeholder String action);
+
     @Message("prism.error.param-invalid-block-tag")
     void errorParamInvalidBlockTag(CommandSender receiver);
+
+    @Message("prism.error.param-invalid-in")
+    void errorParamInvalidIn(CommandSender receiver, @Placeholder String value);
 
     @Message("prism.error.param-invalid-entity-type-tag")
     void errorParamInvalidEntityTypeTag(CommandSender receiver);
@@ -149,6 +156,9 @@ public interface MessageService {
 
     @Message("prism.error.queue-not-free")
     void errorQueueNotFree(CommandSender receiver);
+
+    @Message("prism.error.queue-reversed-failure")
+    void errorQueueReversedFailure(CommandSender receiver);
 
     @Message("prism.error.queue-result-missing")
     void errorQueueResultMissing(CommandSender receiver);
@@ -248,6 +258,12 @@ public interface MessageService {
     @Message("prism.modifications-planned-success")
     void modificationsAppliedSuccess(CommandSender receiver, @Placeholder Integer count);
 
+    @Message("prism.modifications-undo-no-result")
+    void modificationsUndoNoResult(CommandSender receiver);
+
+    @Message("prism.count-result")
+    void countResult(CommandSender receiver, @Placeholder Integer count);
+
     @Message("prism.no-results")
     void noResults(CommandSender receiver);
 
@@ -298,6 +314,35 @@ public interface MessageService {
 
     @Message("prism.wand-deactivated")
     void wandDeactivated(Player player, @Placeholder WandMode wandmode);
+
+    @Message("prism.status.header")
+    void statusHeader(CommandSender receiver);
+
+    @Message("prism.status.version")
+    void statusVersion(CommandSender receiver, @Placeholder String version);
+
+    @Message("prism.status.storage")
+    void statusStorage(CommandSender receiver, @Placeholder String storage, @Placeholder StatusLabel ready);
+
+    @Message("prism.status.connection")
+    void statusConnection(
+        CommandSender receiver,
+        @Placeholder StatusLabel connected,
+        @Placeholder Integer active,
+        @Placeholder Integer idle,
+        @Placeholder Integer total,
+        @Placeholder Integer max,
+        @Placeholder Integer awaiting
+    );
+
+    @Message("prism.status.queue")
+    void statusQueue(CommandSender receiver, @Placeholder Integer size, @Placeholder Integer capacity);
+
+    @Message("prism.status.wal")
+    void statusWal(CommandSender receiver, @Placeholder String mode);
+
+    @Message("prism.status.purge")
+    void statusPurge(CommandSender receiver, @Placeholder StatusLabel active);
 
     @Message("prism.wand-switched")
     void wandSwitched(Player player, @Placeholder WandMode wandmode);

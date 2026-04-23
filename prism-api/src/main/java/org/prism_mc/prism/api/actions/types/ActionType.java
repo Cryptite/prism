@@ -22,9 +22,12 @@ package org.prism_mc.prism.api.actions.types;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
+import org.jetbrains.annotations.Nullable;
 import org.prism_mc.prism.api.actions.Action;
 import org.prism_mc.prism.api.actions.ActionData;
 import org.prism_mc.prism.api.actions.metadata.Metadata;
+import org.prism_mc.prism.api.services.modifications.ModificationHandler;
 
 @Getter
 @EqualsAndHashCode
@@ -56,6 +59,31 @@ public abstract class ActionType {
     protected final boolean usesDescriptor;
 
     /**
+     * Whether activities of this type should be aggregated.
+     */
+    protected final boolean aggregatable;
+
+    /**
+     * Custom modification handler for rollback/restore logic.
+     */
+    @Setter
+    @Nullable
+    @EqualsAndHashCode.Exclude
+    protected ModificationHandler modificationHandler;
+
+    /**
+     * Default past tense string for custom action types.
+     *
+     * <p>When set, this value is used as the default translation for the
+     * past tense form of this action type (e.g. "exploded", "crafted").
+     * Server owners can still override this by adding the translation key
+     * to their locale file.</p>
+     */
+    @Nullable
+    @EqualsAndHashCode.Exclude
+    protected final String defaultPastTense;
+
+    /**
      * Construct a new action type.
      *
      * @param key The key
@@ -63,7 +91,7 @@ public abstract class ActionType {
      * @param reversible If action is reversible
      */
     public ActionType(String key, ActionResultType resultType, boolean reversible) {
-        this(key, resultType, reversible, true, null);
+        this(key, resultType, reversible, true, null, false, null);
     }
 
     /**
@@ -75,17 +103,17 @@ public abstract class ActionType {
      * @param usesDescriptor Whether the action uses a descriptor
      */
     public ActionType(String key, ActionResultType resultType, boolean reversible, boolean usesDescriptor) {
-        this(key, resultType, reversible, usesDescriptor, null);
+        this(key, resultType, reversible, usesDescriptor, null, false, null);
     }
 
     /**
      * Construct a new action type.
      *
      * @param key The key
-     * @param metadata The metadata
      * @param resultType The result type
      * @param reversible If action is reversible
      * @param usesDescriptor Whether the action uses a descriptor
+     * @param metadata The metadata
      */
     public ActionType(
         String key,
@@ -94,11 +122,57 @@ public abstract class ActionType {
         boolean usesDescriptor,
         Metadata metadata
     ) {
+        this(key, resultType, reversible, usesDescriptor, metadata, false, null);
+    }
+
+    /**
+     * Construct a new action type.
+     *
+     * @param key The key
+     * @param resultType The result type
+     * @param reversible If action is reversible
+     * @param usesDescriptor Whether the action uses a descriptor
+     * @param metadata The metadata
+     * @param aggregatable Whether activities should be aggregated
+     */
+    public ActionType(
+        String key,
+        ActionResultType resultType,
+        boolean reversible,
+        boolean usesDescriptor,
+        Metadata metadata,
+        boolean aggregatable
+    ) {
+        this(key, resultType, reversible, usesDescriptor, metadata, aggregatable, null);
+    }
+
+    /**
+     * Construct a new action type.
+     *
+     * @param key The key
+     * @param resultType The result type
+     * @param reversible If action is reversible
+     * @param usesDescriptor Whether the action uses a descriptor
+     * @param metadata The metadata
+     * @param aggregatable Whether activities should be aggregated
+     * @param defaultPastTense The default past tense translation string
+     */
+    public ActionType(
+        String key,
+        ActionResultType resultType,
+        boolean reversible,
+        boolean usesDescriptor,
+        Metadata metadata,
+        boolean aggregatable,
+        String defaultPastTense
+    ) {
         this.key = key;
         this.metadata = metadata;
         this.resultType = resultType;
         this.reversible = reversible;
         this.usesDescriptor = usesDescriptor;
+        this.aggregatable = aggregatable;
+        this.defaultPastTense = defaultPastTense;
     }
 
     /**

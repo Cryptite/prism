@@ -280,6 +280,27 @@ public class SqlActivityQueryBuilder {
     }
 
     /**
+     * Count activities matching a query.
+     *
+     * @param query The activity query
+     * @return The count of matching activities
+     */
+    public int countActivities(ActivityQuery query) {
+        SelectQuery<Record> queryBuilder = dslContext.selectQuery();
+
+        queryBuilder.addSelect(count().as("total"));
+
+        queryBuilder.addFrom(PRISM_ACTIVITIES);
+
+        joins(queryBuilder, query);
+
+        queryBuilder.addConditions(conditions(query));
+
+        var result = queryBuilder.fetchOne();
+        return result != null ? result.getValue("total", Integer.class) : 0;
+    }
+
+    /**
      * Query the primary key bounds for the given conditions.
      *
      * @param query The query
@@ -584,6 +605,13 @@ public class SqlActivityQueryBuilder {
             conditions.add(PRISM_ACTIVITIES.X.between(query.minCoordinate().intX(), query.maxCoordinate().intX()));
             conditions.add(PRISM_ACTIVITIES.Y.between(query.minCoordinate().intY(), query.maxCoordinate().intY()));
             conditions.add(PRISM_ACTIVITIES.Z.between(query.minCoordinate().intZ(), query.maxCoordinate().intZ()));
+        }
+
+        // Y coordinate filters
+        if (query.above() != null) {
+            conditions.add(PRISM_ACTIVITIES.Y.greaterOrEqual(query.above()));
+        } else if (query.below() != null) {
+            conditions.add(PRISM_ACTIVITIES.Y.lessOrEqual(query.below()));
         }
 
         // Query

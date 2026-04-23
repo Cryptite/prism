@@ -42,6 +42,30 @@ public class ItemActionType extends ActionType {
         super(key, resultType, reversible);
     }
 
+    /**
+     * Construct a new item action type.
+     *
+     * @param key The key
+     * @param resultType The result type
+     * @param reversible If action is reversible
+     * @param aggregatable Whether activities should be aggregated
+     */
+    public ItemActionType(String key, ActionResultType resultType, boolean reversible, boolean aggregatable) {
+        super(key, resultType, reversible, true, null, aggregatable);
+    }
+
+    /**
+     * Construct a new item action type with a default past tense string.
+     *
+     * @param key The key
+     * @param resultType The result type
+     * @param reversible If action is reversible
+     * @param defaultPastTense The default past tense translation string
+     */
+    public ItemActionType(String key, ActionResultType resultType, boolean reversible, String defaultPastTense) {
+        super(key, resultType, reversible, true, null, false, defaultPastTense);
+    }
+
     @Override
     public Action createAction(ActionData actionData) {
         ItemStack itemStack;

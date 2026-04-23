@@ -25,17 +25,43 @@ import com.google.inject.Provider;
 import dev.triumphteam.cmd.core.argument.keyed.Arguments;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.prism_mc.prism.api.activities.ActivityQuery;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
 import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
 import org.prism_mc.prism.paper.api.activities.PaperActivityQuery;
 import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
 import org.prism_mc.prism.paper.services.messages.MessageService;
 import org.prism_mc.prism.paper.services.query.parsers.QueryArgumentParser;
-import org.prism_mc.prism.paper.services.query.parsers.parameters.*;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.AboveParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.ActionParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.AtParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BeforeParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BelowParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockCauseParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BlockTagParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.BoundsParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.CauseParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.DescriptorParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeCauseParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.EntityTypeTagParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.IdParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.InParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.ItemParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.ItemTagParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerAffectedParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerCauseParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.PlayerParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.RadiusQueryArgumentParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.ReversedParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.SinceParameterParser;
+import org.prism_mc.prism.paper.services.query.parsers.parameters.WorldParameterParser;
 
 public class QueryService {
 
@@ -72,11 +98,13 @@ public class QueryService {
         // World parser must be first
         parsers.add(new WorldParameterParser(messageService, configurationService.prismConfig().defaults()));
 
+        parsers.add(new AboveParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(
             new ActionParameterParser(messageService, configurationService.prismConfig().defaults(), actionRegistry)
         );
         parsers.add(new AtParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new BeforeParameterParser(messageService, configurationService.prismConfig().defaults()));
+        parsers.add(new BelowParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new BlockCauseParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new BlockParameterParser(messageService, configurationService.prismConfig().defaults()));
         parsers.add(new BlockTagParameterParser(messageService, configurationService.prismConfig().defaults()));
@@ -138,9 +166,28 @@ public class QueryService {
 
         var builder = PaperActivityQuery.builder();
 
+        // Count flag
+        if (arguments.hasFlag("count")) {
+            builder.countOnly(true);
+        }
+
         // No-group flag
         if (arguments.hasFlag("nogroup")) {
             builder.grouped(false);
+        }
+
+        // Sort flag
+        Optional<String> sortFlag = arguments.getFlagValue("sort", String.class);
+        if (sortFlag.isPresent()) {
+            String sortValue = sortFlag.get().toLowerCase(Locale.ROOT);
+            switch (sortValue) {
+                case "asc" -> builder.sort(ActivityQuery.Sort.ASCENDING);
+                case "desc" -> builder.sort(ActivityQuery.Sort.DESCENDING);
+                default -> {
+                    messageService.errorParamInvalid(sender, "sort:" + sortFlag.get());
+                    return Optional.empty();
+                }
+            }
         }
 
         // If an ID is provided, no other parameters matter

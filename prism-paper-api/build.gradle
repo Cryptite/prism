@@ -1,21 +1,33 @@
 plugins {
+    id 'java-library'
     id 'prism.java-conventions'
     id 'maven-publish'
 }
 
 dependencies {
     compileOnly project.property('deps.paper-api')
-    compileOnly project.property('deps.nbt-api')
-    implementation project(':prism-api')
+    api project(':prism-api')
 }
+
+def projectVersion = project.property("version")
+def publishVersion = projectVersion.contains('-dev') ? projectVersion.replaceAll('-dev\\d+', '-SNAPSHOT') : projectVersion
 
 publishing {
     publications {
         maven(MavenPublication) {
             groupId = project.property("group")
             artifactId = 'prism-paper-api'
-            version = project.property("version")
+            version = publishVersion
             from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'prism'
+            def releasesRepoUrl = "https://nexus.prism-mc.org/repository/maven-releases/"
+            def snapshotsRepoUrl = "https://nexus.prism-mc.org/repository/maven-snapshots/"
+            url = publishVersion.contains('-SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials(PasswordCredentials)
         }
     }
 }

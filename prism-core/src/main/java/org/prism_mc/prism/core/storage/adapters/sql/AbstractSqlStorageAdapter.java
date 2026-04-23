@@ -65,6 +65,7 @@ import org.prism_mc.prism.api.containers.TranslatableContainer;
 import org.prism_mc.prism.api.services.pagination.PartialListPaginationResult;
 import org.prism_mc.prism.api.storage.ActivityBatch;
 import org.prism_mc.prism.api.storage.StorageAdapter;
+import org.prism_mc.prism.api.storage.StorageConnectionStatus;
 import org.prism_mc.prism.api.util.Coordinate;
 import org.prism_mc.prism.api.util.Pair;
 import org.prism_mc.prism.core.injection.factories.SqlActivityQueryBuilderFactory;
@@ -764,7 +765,7 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
 
         // World
         List<PrismWorldsRecord> worlds = dslContext
-            .select(PRISM_WORLDS.WORLD_UUID, PRISM_WORLDS.WORLD_ID)
+            .select(PRISM_WORLDS.WORLD_UUID, PRISM_WORLDS.WORLD_ID, PRISM_WORLDS.WORLD)
             .from(PRISM_WORLDS)
             .fetchInto(PrismWorldsRecord.class);
 
@@ -772,6 +773,8 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
             int worldId = worldsRecord.getWorldId().intValue();
             UUID worldUuid = UUID.fromString(worldsRecord.getWorldUuid());
             cacheService.worldUuidPkMap().put(worldUuid, worldId);
+            cacheService.worldNamePkMap().put(worldsRecord.getWorld(), worldId);
+            cacheService.worldNameUuidMap().put(worldsRecord.getWorld(), worldUuid);
         }
     }
 
@@ -782,6 +785,11 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
      */
     protected void updateSchemas(String schemaVersion) throws Exception {
         schemaUpdater.update(dslContext, schemaVersion);
+    }
+
+    @Override
+    public int countActivities(ActivityQuery query) throws Exception {
+        return queryBuilder.countActivities(query);
     }
 
     @Override
@@ -1060,7 +1068,13 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
 
     @Override
     public ActivityBatch createActivityBatch() {
-        return new SqlActivityBatch(loggingService, dslContext, serializerVersion, cacheService);
+        return new SqlActivityBatch(
+            loggingService,
+            dslContext,
+            serializerVersion,
+            cacheService,
+            configurationService.storageConfig().identifyWorldsByName()
+        );
     }
 
     @Override
@@ -1091,6 +1105,27 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
         if (dataSource != null) {
             dataSource.close();
         }
+    }
+
+    @Override
+    public StorageConnectionStatus connectionStatus() {
+        if (dataSource == null || dataSource.isClosed()) {
+            return StorageConnectionStatus.builder().connected(false).build();
+        }
+
+        var pool = dataSource.getHikariPoolMXBean();
+        if (pool == null) {
+            return StorageConnectionStatus.builder().connected(false).build();
+        }
+
+        return StorageConnectionStatus.builder()
+            .connected(true)
+            .activeConnections(pool.getActiveConnections())
+            .idleConnections(pool.getIdleConnections())
+            .totalConnections(pool.getTotalConnections())
+            .maxConnections(dataSource.getMaximumPoolSize())
+            .threadsAwaitingConnection(pool.getThreadsAwaitingConnection())
+            .build();
     }
 
     @Override

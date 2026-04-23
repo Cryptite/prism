@@ -8,20 +8,24 @@ dependencies {
     compileOnly project.property('deps.jetbrains-annotations')
 }
 
+def projectVersion = project.property("version")
+def publishVersion = projectVersion.contains('-dev') ? projectVersion.replaceAll('-dev\\d+', '-SNAPSHOT') : projectVersion
+
 publishing {
     publications {
         maven(MavenPublication) {
             groupId = project.property("group")
             artifactId = 'prism-api'
-            version = project.property("version")
+            version = publishVersion
             from components.java
         }
     }
     repositories {
         maven {
-            def releasesRepoUrl = "https://nexus.darkhelmet.network/repository/maven-releases/"
-            def snapshotsRepoUrl = "https://nexus.darkhelmet.network/repository/maven-snapshots/"
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            name = 'prism'
+            def releasesRepoUrl = "https://nexus.prism-mc.org/repository/maven-releases/"
+            def snapshotsRepoUrl = "https://nexus.prism-mc.org/repository/maven-snapshots/"
+            url = publishVersion.contains('-SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             credentials(PasswordCredentials)
         }
     }
