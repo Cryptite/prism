@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import org.bukkit.*;
@@ -285,15 +286,6 @@ public class PrismPaper implements PrismPaperApi {
             if (Bukkit.getPluginManager().getPlugin("WorldEdit") != null) {
                 injectorProvider.injector().getInstance(WorldEditIntegration.class);
             }
-
-            // Register the API with Bukkit's ServicesManager
-            PaperPrismApi apiImpl = injectorProvider.injector().getInstance(PaperPrismApiImpl.class);
-            loaderPlugin().getServer().getServicesManager().register(
-                PaperPrismApi.class,
-                apiImpl,
-                loaderPlugin(),
-                ServicePriority.Normal
-            );
 
             // Register event listeners
             registerEvent(AsyncPlayerChatListener.class);

@@ -27,6 +27,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.inventory.ItemStack;
 import org.prism_mc.prism.api.activities.Activity;
 import org.prism_mc.prism.api.services.recording.RecordingService;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
